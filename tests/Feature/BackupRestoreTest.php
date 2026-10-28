@@ -34,6 +34,14 @@ class BackupRestoreTest extends TestCase
         Storage::fake('local');
         Queue::fake();
         $user = User::factory()->create(['role' => 'hr', 'source' => 'EMS', 'school_id' => 'RECOVERY-TEST', 'campus' => 'Test', 'active' => true]);
+        // The upload source is gated to the account's registered workspaces (SDD: registered
+        // workspaces drive access). Register an active EMS workspace for this school/campus so
+        // the user's own source is authorised for intake.
+        DB::table('workspaces')->insert([
+            'school_id' => 'RECOVERY-TEST', 'campus' => 'Test', 'code' => 'EMS',
+            'name' => 'Employee Management', 'kind' => 'erp', 'status' => 'active',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
         $result = $this->actingAs($user)->postJson('/documents', ['title' => 'Restorable evidence', 'source' => 'EMS', 'classification' => 'Internal', 'submission_key' => 'restore-check', 'file' => UploadedFile::fake()->createWithContent('backup.txt', 'Synthetic recovery evidence')])->assertCreated()->json();
         $scanner = \Mockery::mock(Scanner::class);
         $scanner->shouldReceive('scan')->once()->andReturn('Clean');
