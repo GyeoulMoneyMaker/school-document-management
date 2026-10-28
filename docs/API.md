@@ -62,7 +62,6 @@ Application and MySQL session timestamps use UTC; clients should display them in
 
 Upload formats (2026-10-17): single-file, version and folder uploads accept any file extension, including extensionless files. The 10 MB per-file limit, actual-file validation, detected MIME metadata, private UUID storage and automatic ClamAV gate still apply. Downloads use attachments; unsupported preview formats remain download-only. Encrypted/oversized-to-scan archives may remain blocked by ClamAV.
 
-
 ## Verified OAS-to-ES applicant packet release
 
 OAS sends `POST /applicant-packets` JSON with `event_id` (stable retry identity), `applicant_id`, increasing integer `revision`, boolean `released`, `admitted`, `verified` and `version_ids` (exact UUIDs). Release requires admitted/verified assertions from OAS and at least one Clean OAS version in the connector school/campus. DMS preserves source evidence rather than performing admissions verification. Medical categories and Restricted documents are excluded.
