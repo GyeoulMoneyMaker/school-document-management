@@ -21,7 +21,13 @@ class ApplicantPacketService
             $prior = DB::table('packet_receipts')->where('scope_key', $scope)->where('event_id', $p['event_id'])->first();
             if ($prior) {
                 abort_unless(hash_equals($prior->request_hash, $hash), 409);
-                return [json_decode($prior->response, true), 200];
+                // MySQL canonicalizes JSON object key order on read-back, so the
+                // replayed receipt must be re-keyed deterministically to match the
+                // freshly built body (assertSame is key-order sensitive).
+                $replayed = json_decode($prior->response, true);
+                ksort($replayed);
+
+                return [$replayed, 200];
             }
             abort_if(DB::table('packet_receipts')->where('scope_key', $scope)->where('applicant_id', $p['applicant_id'])->where('revision', $p['revision'])->exists(), 409, 'Packet revision already received.');
             $query = Access::scope(DB::table('applicant_packets'), $connector)->where('applicant_id', $p['applicant_id']);
@@ -40,6 +46,9 @@ class ApplicantPacketService
                 else DB::table('applicant_packets')->insert($values + ['id' => $id, 'school_id' => $connector->school_id, 'campus' => $connector->campus, 'applicant_id' => $p['applicant_id'], 'created_at' => now()]);
             } else $id = $packet->id;
             $body = ['packet_id' => $id, 'revision' => (int) $p['revision'], 'applied' => $applied];
+            // Keep a deterministic key order so the fresh body matches the
+            // canonicalized replayed body regardless of DB JSON key ordering.
+            ksort($body);
             DB::table('packet_receipts')->insert(['scope_key' => $scope, 'event_id' => $p['event_id'], 'applicant_id' => $p['applicant_id'], 'revision' => $p['revision'], 'request_hash' => $hash, 'payload' => json_encode($p), 'response' => json_encode($body), 'created_at' => now()]);
             Access::audit($connector, 'packet.received', null, $body + ['released' => $p['released']]);
             return [$body, 201];
